@@ -57,6 +57,31 @@
   .count-pill { background: var(--red-light); border: 1px solid var(--red-mid); padding: 5px 14px; border-radius: 20px; font-size: 12px; color: var(--red); font-weight: 600; }
   .version-pill { background: #f0f0f0; border: 1px solid #ddd; padding: 5px 10px; border-radius: 20px; font-size: 11px; color: #999; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
 
+  /* ── Settings ── */
+  .settings-view { padding: 20px 20px 120px; }
+  .settings-header { font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 24px; }
+  .settings-section { margin-bottom: 24px; }
+  .settings-section-title { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px; }
+  .settings-row {
+    background: #fff; border: 1.5px solid var(--border); border-radius: 14px;
+    padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: center;
+    justify-content: space-between; box-shadow: 0 1px 4px rgba(0,0,0,.04);
+  }
+  .settings-row-left { display: flex; align-items: center; gap: 14px; }
+  .settings-row-icon { font-size: 24px; width: 40px; height: 40px; background: var(--red-light); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .settings-row-label { font-size: 14px; font-weight: 600; color: var(--text); }
+  .settings-row-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .settings-badge-ok { font-size: 11px; font-weight: 700; color: var(--ok); white-space: nowrap; }
+  .version-tag { font-family: 'JetBrains Mono', monospace; background: #f0f0f0; padding: 1px 6px; border-radius: 4px; font-size: 11px; color: #888; }
+  .btn-logout {
+    width: 100%; padding: 14px; border-radius: 14px; border: 1.5px solid var(--red-mid);
+    background: var(--red-light); color: var(--red); font-size: 15px; font-weight: 700;
+    cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: background .15s;
+  }
+  .btn-logout:hover { background: var(--red-mid); }
+  .settings-logout-note { font-size: 12px; color: var(--text-dim); text-align: center; margin-top: 10px; line-height: 1.6; }
+
   /* ── Views ── */
   .view { display: none; flex: 1; }
   .view.active { display: block; }
@@ -572,6 +597,58 @@
     </div>
   </div>
 
+  <!-- VUE PARAMÈTRES -->
+  <div class="view" id="view-settings">
+    <div class="settings-view">
+      <div class="settings-header">Paramètres</div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Application</div>
+        <div class="settings-row">
+          <div class="settings-row-left">
+            <div class="settings-row-icon">🚛</div>
+            <div>
+              <div class="settings-row-label">Bonnafous Suivi Parc</div>
+              <div class="settings-row-sub">Version <span class="version-tag">v1.0</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-left">
+            <div class="settings-row-icon">🔥</div>
+            <div>
+              <div class="settings-row-label">Base de données</div>
+              <div class="settings-row-sub">Firebase · Synchronisé en temps réel</div>
+            </div>
+          </div>
+          <span class="settings-badge-ok">● Connecté</span>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Compte</div>
+        <div class="settings-row">
+          <div class="settings-row-left">
+            <div class="settings-row-icon">👥</div>
+            <div>
+              <div class="settings-row-label">Équipe Bonnafous</div>
+              <div class="settings-row-sub">Session active · expire dans 30 jours</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Session</div>
+        <button class="btn-logout" onclick="logout()">
+          <span>🔓</span> Se déconnecter
+        </button>
+        <div class="settings-logout-note">Vous devrez rentrer le code d'équipe à la prochaine ouverture.</div>
+      </div>
+
+    </div>
+  </div>
+
 </div>
 
 <!-- BOTTOM NAV -->
@@ -584,6 +661,9 @@
   </button>
   <button class="nav-tab tab-expire" id="tab-expire" onclick="switchTab('expire')">
     <span class="nav-icon">🔴</span><span id="label-expire">Expirés</span>
+  </button>
+  <button class="nav-tab tab-settings" id="tab-settings" onclick="showSettings()">
+    <span class="nav-icon">⚙️</span>Paramètres
   </button>
 </div>
 
@@ -748,8 +828,23 @@ function renderVehicles() {
 function showView(view) {
   document.querySelectorAll('.view').forEach(function(el) { el.classList.remove('active'); });
   document.getElementById('view-' + view).classList.add('active');
-  document.getElementById('btnBack').classList.toggle('visible', view !== 'list');
-  document.getElementById('bottomNav').classList.toggle('hidden', view !== 'list');
+  document.getElementById('btnBack').classList.toggle('visible', view !== 'list' && view !== 'settings');
+  document.getElementById('bottomNav').classList.toggle('hidden', view !== 'list' && view !== 'settings');
+}
+
+function showSettings() {
+  document.querySelectorAll('.nav-tab').forEach(function(el) { el.classList.remove('active'); });
+  document.getElementById('tab-settings').classList.add('active');
+  showView('settings');
+}
+
+function logout() {
+  if (!confirm('Se déconnecter ? Vous devrez rentrer le code d\'équipe à la prochaine ouverture.')) return;
+  localStorage.removeItem('bonnafous_auth');
+  document.getElementById('mainApp').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginCode').value = '';
+  document.getElementById('loginError').textContent = '';
 }
 
 function handleBack() {
