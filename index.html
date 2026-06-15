@@ -129,7 +129,9 @@
   .arrow { font-size: 18px; color: #ddd; }
   .card-specs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
   .spec-tag { background: #f5f5f5; border: 1px solid #e8e8e8; border-radius: 20px; font-size: 11px; font-weight: 600; color: #555; padding: 3px 9px; }
-  .card-vin { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #bbb; margin-bottom: 8px; letter-spacing: .5px; }
+  .card-vin { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #bbb; margin-bottom: 6px; letter-spacing: .5px; }
+  .card-categorie-badge { display: inline-block; background: var(--red-light); border: 1px solid var(--red-mid); color: var(--red); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; margin-bottom: 8px; }
+  .detail-categorie { display: inline-block; background: var(--red-light); border: 1px solid var(--red-mid); color: var(--red); font-size: 12px; font-weight: 700; padding: 3px 12px; border-radius: 20px; margin-top: 6px; }
 
   .interv-badge { background: #fff5e6; color: var(--warn); border: 1px solid #fcd9a0; border-radius: 20px; font-size: 11px; font-weight: 600; padding: 3px 9px; }
 
@@ -439,6 +441,15 @@
           </select>
         </div>
         <div class="form-field">
+          <label>Catégorie</label>
+          <select id="formCategorie">
+            <option value="">— Non défini —</option>
+            <option value="Toupie">🔄 Toupie</option>
+            <option value="Pompe à béton">🦾 Pompe à béton</option>
+            <option value="Aspiratrice">🌀 Aspiratrice</option>
+          </select>
+        </div>
+        <div class="form-field">
           <label>Limiteur de vitesse</label>
           <input id="formLimiteur" type="text" placeholder="MM/AAAA">
           <span class="form-hint">ex : 08/2026</span>
@@ -475,6 +486,7 @@
         <div class="detail-plaque" id="detailPlaque">—</div>
         <div class="detail-marque" id="detailMarque"></div>
         <div class="detail-vin" id="detailVin"></div>
+        <div class="detail-categorie" id="detailCategorie"></div>
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn-edit-vehicle" onclick="showEditVehicle()">✏️ Modifier</button>
@@ -565,6 +577,15 @@
             <option value="VL">Véhicule Léger (VL)</option>
             <option value="SPL">Semi-remorque (SPL)</option>
             <option value="UTIL">Utilitaire</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Catégorie</label>
+          <select id="editFormCategorie">
+            <option value="">— Non défini —</option>
+            <option value="Toupie">🔄 Toupie</option>
+            <option value="Pompe à béton">🦾 Pompe à béton</option>
+            <option value="Aspiratrice">🌀 Aspiratrice</option>
           </select>
         </div>
         <div class="form-field">
@@ -818,6 +839,7 @@ function renderVehicles() {
         '<div class="marque">' + [v.marque, v.type, v.annee, v.motorisation].filter(Boolean).join(' · ') + '</div>' +
       '</div>' +
       (v.vin ? '<div class="card-vin">VIN : ' + v.vin + '</div>' : '') +
+      (v.categorie ? '<div class="card-categorie-badge">' + v.categorie + '</div>' : '') +
       '<div class="card-badges">' + statusBadge(v.limiteur, 'Limiteur') + statusBadge(v.mine, 'Mine') + (intervEnCours > 0 ? '<span class="interv-badge">⚠ ' + intervEnCours + ' intervention(s)</span>' : '') + '</div>' +
       '<div class="card-footer"><span class="pieces-count">' + nbPieces + ' pièce(s)</span><span class="arrow">›</span></div>' +
     '</div>';
@@ -855,6 +877,7 @@ function filterVehicles() { renderVehicles(); }
 function showAddVehicle() {
   ['formPlaque','formMarque','formLimiteur','formMine','formAnnee','formMotorisation','formVin'].forEach(function(id) { document.getElementById(id).value = ''; });
   document.getElementById('formType').value = 'PL';
+  document.getElementById('formCategorie').value = '';
   showView('add');
 }
 
@@ -863,6 +886,7 @@ function saveVehicle() {
   var plaque = document.getElementById('formPlaque').value.trim().toUpperCase();
   var marque = document.getElementById('formMarque').value.trim();
   var type   = document.getElementById('formType').value;
+  var categorie = document.getElementById('formCategorie').value;
   var limiteur = document.getElementById('formLimiteur').value.trim();
   var mine   = document.getElementById('formMine').value.trim();
   var annee  = document.getElementById('formAnnee').value.trim();
@@ -876,7 +900,7 @@ function saveVehicle() {
 
   var id = genId();
   db.ref('vehicules/' + id).set({
-    id: id, plaque: plaque, marque: marque, type: type,
+    id: id, plaque: plaque, marque: marque, type: type, categorie: categorie,
     limiteur: limiteur, mine: mine, annee: annee, motorisation: motorisation, vin: vin
   }).then(function() {
     showView('list');
@@ -893,6 +917,7 @@ function openVehicle(id) {
     document.getElementById('detailPlaque').textContent = v.plaque;
     document.getElementById('detailMarque').textContent = [v.marque, v.type, v.annee, v.motorisation].filter(Boolean).join(' · ');
     document.getElementById('detailVin').textContent = v.vin ? 'VIN : ' + v.vin : '';
+    document.getElementById('detailCategorie').textContent = v.categorie || '';
     document.getElementById('editLimiteur').value = v.limiteur || '';
     document.getElementById('editMine').value = v.mine || '';
     renderPieces(v.pieces ? Object.values(v.pieces) : []);
@@ -909,6 +934,7 @@ function showEditVehicle() {
     document.getElementById('editFormPlaque').value = v.plaque || '';
     document.getElementById('editFormMarque').value = v.marque || '';
     document.getElementById('editFormType').value = v.type || 'PL';
+    document.getElementById('editFormCategorie').value = v.categorie || '';
     document.getElementById('editFormLimiteur').value = v.limiteur || '';
     document.getElementById('editFormMine').value = v.mine || '';
     document.getElementById('editFormAnnee').value = v.annee || '';
@@ -922,6 +948,7 @@ function updateVehicle() {
   var plaque = document.getElementById('editFormPlaque').value.trim().toUpperCase();
   var marque = document.getElementById('editFormMarque').value.trim();
   var type   = document.getElementById('editFormType').value;
+  var categorie = document.getElementById('editFormCategorie').value;
   var limiteur = document.getElementById('editFormLimiteur').value.trim();
   var mine   = document.getElementById('editFormMine').value.trim();
   var annee  = document.getElementById('editFormAnnee').value.trim();
@@ -934,12 +961,13 @@ function updateVehicle() {
   if (mine && !dateRx.test(mine)) { alert('Format mine invalide. Exemple : 10/2026'); return; }
 
   db.ref('vehicules/' + currentVehicleId).update({
-    plaque: plaque, marque: marque, type: type,
+    plaque: plaque, marque: marque, type: type, categorie: categorie,
     limiteur: limiteur, mine: mine, annee: annee, motorisation: motorisation, vin: vin
   }).then(function() {
     document.getElementById('detailPlaque').textContent = plaque;
     document.getElementById('detailMarque').textContent = [marque, type, annee, motorisation].filter(Boolean).join(' · ');
     document.getElementById('detailVin').textContent = vin ? 'VIN : ' + vin : '';
+    document.getElementById('detailCategorie').textContent = categorie || '';
     showView('detail');
     showToast('Véhicule modifié ✓');
   });
