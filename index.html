@@ -412,7 +412,7 @@
   <!-- VUE LISTE -->
   <div class="view active" id="view-list">
     <div class="list-toolbar">
-      <input class="search-input" id="searchInput" type="text" placeholder="🔍  Rechercher une plaque, marque…" oninput="filterVehicles()">
+      <input class="search-input" id="searchInput" type="text" placeholder="🔍  Plaque, marque, catégorie…" oninput="filterVehicles()">
       <button class="btn-add" onclick="showAddVehicle()" title="Ajouter un véhicule">+</button>
     </div>
     <div id="vehicleList"></div>
@@ -447,6 +447,10 @@
             <option value="Toupie">🔄 Toupie</option>
             <option value="Pompe à béton">🦾 Pompe à béton</option>
             <option value="Aspiratrice">🌀 Aspiratrice</option>
+            <option value="Pumi">🏗️ Pumi</option>
+            <option value="Voiture">🚗 Voiture</option>
+            <option value="Semi (remorque)">🚛 Semi (remorque)</option>
+            <option value="Semi (tracteur)">🚚 Semi (tracteur)</option>
           </select>
         </div>
         <div class="form-field">
@@ -586,6 +590,10 @@
             <option value="Toupie">🔄 Toupie</option>
             <option value="Pompe à béton">🦾 Pompe à béton</option>
             <option value="Aspiratrice">🌀 Aspiratrice</option>
+            <option value="Pumi">🏗️ Pumi</option>
+            <option value="Voiture">🚗 Voiture</option>
+            <option value="Semi (remorque)">🚛 Semi (remorque)</option>
+            <option value="Semi (tracteur)">🚚 Semi (tracteur)</option>
           </select>
         </div>
         <div class="form-field">
@@ -803,7 +811,7 @@ function renderVehicles() {
     if (currentTab === 'expire') return s === 'expire';
     return true;
   }).filter(function(v) {
-    return v.plaque.toLowerCase().includes(search) || (v.marque || '').toLowerCase().includes(search);
+    return v.plaque.toLowerCase().includes(search) || (v.marque || '').toLowerCase().includes(search) || (v.categorie || '').toLowerCase().includes(search);
   });
 
   var list = document.getElementById('vehicleList');
