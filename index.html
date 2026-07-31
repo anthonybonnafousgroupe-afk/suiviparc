@@ -375,6 +375,13 @@
   }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+  .version-bump { animation: vbump .6s ease; }
+  @keyframes vbump {
+    0%   { transform: scale(1);   background: #f0f0f0; color: #999; }
+    30%  { transform: scale(1.25); background: var(--red); color: #fff; }
+    100% { transform: scale(1);   background: #f0f0f0; color: #999; }
+  }
+
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
   ::-webkit-scrollbar-thumb { background: var(--red-mid); border-radius: 3px; }
@@ -417,7 +424,7 @@
     </div>
     <div class="topbar-right">
       <span class="count-pill"><span id="totalCount">0</span> véhicule(s)</span>
-      <span class="version-pill">v1.0</span>
+      <span class="version-pill" id="versionPill">v1.0</span>
     </div>
   </div>
 
@@ -671,7 +678,7 @@
             <div class="settings-row-icon">🚛</div>
             <div>
               <div class="settings-row-label">Bonnafous Suivi Parc</div>
-              <div class="settings-row-sub">Version <span class="version-tag">v1.0</span></div>
+              <div class="settings-row-sub">Version <span class="version-tag" id="versionTag">v1.0</span></div>
             </div>
           </div>
         </div>
@@ -749,6 +756,28 @@ var currentVehicleId = null;
 var allVehicles = [];
 var currentTab = 'tous';
 var currentTypeFilter = '';
+
+// ── Gestion version ───────────────────────────────────────────────────────────
+function getVersion() {
+  try { return parseFloat(localStorage.getItem('bonnafous_version') || '1.0'); }
+  catch(e) { return 1.0; }
+}
+function bumpVersion() {
+  var v = Math.round((getVersion() + 0.1) * 10) / 10;
+  localStorage.setItem('bonnafous_version', v.toString());
+  updateVersionDisplay();
+}
+function updateVersionDisplay() {
+  var v = 'v' + getVersion().toFixed(1);
+  var pill = document.getElementById('versionPill');
+  var tag  = document.getElementById('versionTag');
+  if (pill) {
+    pill.textContent = v;
+    pill.classList.add('version-bump');
+    setTimeout(function() { pill.classList.remove('version-bump'); }, 600);
+  }
+  if (tag) tag.textContent = v;
+}
 
 // ── Utilitaires dates ─────────────────────────────────────────────────────────
 function parseDateStr(dateStr) {
@@ -993,7 +1022,7 @@ function saveVehicle() {
     limiteur: limiteur, mine: mine, annee: annee, motorisation: motorisation, chrono: chrono, vin: vin
   }).then(function() {
     showView('list');
-    showToast('Véhicule ajouté ✓');
+    bumpVersion(); showToast('Véhicule ajouté ✓');
   }).catch(function(e) { alert('Erreur : ' + e.message); });
 }
 
@@ -1063,7 +1092,7 @@ function updateVehicle() {
     document.getElementById('detailVin').textContent = vin ? 'VIN : ' + vin : '';
     document.getElementById('detailCategorie').textContent = categorie || '';
     showView('detail');
-    showToast('Véhicule modifié ✓');
+    bumpVersion(); showToast('Véhicule modifié ✓');
   });
 }
 
@@ -1077,7 +1106,7 @@ function saveVehicleInfo() {
   if (mine && !dateRxFull.test(mine)) { alert('Format mine invalide. Exemple : 20/10/2026'); return; }
   if (chrono && !dateRxFull.test(chrono)) { alert('Format chronotachygraphe invalide. Exemple : 15/08/2026'); return; }
   db.ref('vehicules/' + currentVehicleId).update({ limiteur: limiteur, mine: mine, chrono: chrono })
-    .then(function() { showToast('Dates mises à jour ✓'); });
+    .then(function() { bumpVersion(); showToast('Dates mises à jour ✓'); });
 }
 
 // ── Supprimer véhicule ────────────────────────────────────────────────────────
@@ -1085,7 +1114,7 @@ function deleteVehicle() {
   if (!confirm('Supprimer définitivement ce véhicule et toutes ses pièces ?')) return;
   db.ref('vehicules/' + currentVehicleId).remove().then(function() {
     showView('list');
-    showToast('Véhicule supprimé');
+    bumpVersion(); showToast('Véhicule supprimé');
   });
 }
 
@@ -1133,7 +1162,7 @@ function addPiece() {
     document.getElementById('pieceRef').value = '';
     document.getElementById('pieceFournisseur').value = '';
     saveFournisseur(fourn);
-    showToast('Pièce ajoutée ✓');
+    bumpVersion(); showToast('Pièce ajoutée ✓');
   });
 }
 
@@ -1165,7 +1194,7 @@ function savePieceEdit(pieceId) {
   if (!label || !ref) { alert('Désignation et référence sont obligatoires'); return; }
   db.ref('vehicules/' + currentVehicleId + '/pieces/' + pieceId).update({
     label: label, reference: ref, categorie: cat, fournisseur: fourn
-  }).then(function() { saveFournisseur(fourn); showToast('Pièce modifiée ✓'); refreshPieces(); });
+  }).then(function() { bumpVersion(); saveFournisseur(fourn); showToast('Pièce modifiée ✓'); refreshPieces(); });
 }
 
 function deletePiece(pieceId) {
@@ -1213,7 +1242,7 @@ function addIntervention() {
   }).then(function() {
     document.getElementById('interventionText').value = '';
     refreshInterventions();
-    showToast('Intervention ajoutée ✓');
+    bumpVersion(); showToast('Intervention ajoutée ✓');
   });
 }
 
@@ -1225,7 +1254,7 @@ function toggleIntervention(intervId) {
       done: newDone, doneDate: newDone ? todayStr() : null
     }).then(function() {
       refreshInterventions();
-      showToast(newDone ? 'Intervention terminée ✓' : 'Intervention réouverte');
+      bumpVersion(); showToast(newDone ? 'Intervention terminée ✓' : 'Intervention réouverte');
     });
   });
 }
@@ -1307,6 +1336,7 @@ function unlockApp() {
   document.getElementById('mainApp').style.display = 'block';
   subscribeVehicles();
   refreshFournisseurDatalist();
+  updateVersionDisplay();
 }
 
 // ── Init : attendre que tout soit chargé ─────────────────────────────────────
