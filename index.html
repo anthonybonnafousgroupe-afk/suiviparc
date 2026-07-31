@@ -433,7 +433,7 @@
         </div>
         <div class="form-field">
           <label>Type</label>
-          <select id="formType">
+          <select id="formType" onchange="toggleVLFields('form')">
             <option value="PL">Poids Lourd (PL)</option>
             <option value="VL">Véhicule Léger (VL)</option>
             <option value="SPL">Semi-remorque (SPL)</option>
@@ -453,15 +453,15 @@
             <option value="Semi (tracteur)">🚚 Semi (tracteur)</option>
           </select>
         </div>
-        <div class="form-field">
+        <div class="form-field" id="wrap-formLimiteur">
           <label>Limiteur de vitesse</label>
-          <input id="formLimiteur" type="text" placeholder="MM/AAAA">
-          <span class="form-hint">ex : 08/2026</span>
+          <input id="formLimiteur" type="text" placeholder="JJ/MM/AAAA" maxlength="10" oninput="formatDateChrono(this)">
+          <span class="form-hint">ex : 15/08/2026</span>
         </div>
         <div class="form-field">
           <label>Contrôle à la mine</label>
-          <input id="formMine" type="text" placeholder="MM/AAAA">
-          <span class="form-hint">ex : 10/2026</span>
+          <input id="formMine" type="text" placeholder="JJ/MM/AAAA" maxlength="10" oninput="formatDateChrono(this)">
+          <span class="form-hint">ex : 20/10/2026</span>
         </div>
         <div class="form-field">
           <label>Année du véhicule</label>
@@ -470,6 +470,11 @@
         <div class="form-field">
           <label>Motorisation</label>
           <input id="formMotorisation" type="text" placeholder="ex : 420ch Euro6, 2.0 TDI…">
+        </div>
+        <div class="form-field" id="wrap-formChrono">
+          <label>Chronotachygraphe</label>
+          <input id="formChrono" type="text" placeholder="JJ/MM/AAAA" maxlength="10" oninput="formatDateChrono(this)">
+          <span class="form-hint">ex : 15/08/2026</span>
         </div>
         <div class="form-field full">
           <label>Numéro VIN</label>
@@ -502,11 +507,15 @@
       <div class="dates-grid">
         <div class="date-input-wrap">
           <div class="dates-label">Limiteur de vitesse</div>
-          <input id="editLimiteur" type="text" placeholder="MM/AAAA">
+          <input id="editLimiteur" type="text" placeholder="JJ/MM/AAAA" maxlength="10" oninput="formatDateChrono(this)">
         </div>
         <div class="date-input-wrap">
           <div class="dates-label">Contrôle Mine</div>
-          <input id="editMine" type="text" placeholder="MM/AAAA">
+          <input id="editMine" type="text" placeholder="JJ/MM/AAAA" maxlength="10" oninput="formatDateChrono(this)">
+        </div>
+        <div class="date-input-wrap">
+          <div class="dates-label">Chronotachygraphe</div>
+          <input id="editChrono" type="text" placeholder="JJ/MM/AAAA" maxlength="10" oninput="formatDateChrono(this)">
         </div>
       </div>
       <button class="btn-save-dates" onclick="saveVehicleInfo()">💾 Mettre à jour les dates</button>
@@ -576,7 +585,7 @@
         </div>
         <div class="form-field">
           <label>Type</label>
-          <select id="editFormType">
+          <select id="editFormType" onchange="toggleVLFields('editForm')">
             <option value="PL">Poids Lourd (PL)</option>
             <option value="VL">Véhicule Léger (VL)</option>
             <option value="SPL">Semi-remorque (SPL)</option>
@@ -596,15 +605,15 @@
             <option value="Semi (tracteur)">🚚 Semi (tracteur)</option>
           </select>
         </div>
-        <div class="form-field">
+        <div class="form-field" id="wrap-editFormLimiteur">
           <label>Limiteur de vitesse</label>
-          <input id="editFormLimiteur" type="text" placeholder="MM/AAAA">
-          <span class="form-hint">ex : 08/2026</span>
+          <input id="editFormLimiteur" type="text" placeholder="JJ/MM/AAAA" maxlength="10" oninput="formatDateChrono(this)">
+          <span class="form-hint">ex : 15/08/2026</span>
         </div>
         <div class="form-field">
           <label>Contrôle à la mine</label>
-          <input id="editFormMine" type="text" placeholder="MM/AAAA">
-          <span class="form-hint">ex : 10/2026</span>
+          <input id="editFormMine" type="text" placeholder="JJ/MM/AAAA" maxlength="10" oninput="formatDateChrono(this)">
+          <span class="form-hint">ex : 20/10/2026</span>
         </div>
         <div class="form-field">
           <label>Année du véhicule</label>
@@ -613,6 +622,11 @@
         <div class="form-field">
           <label>Motorisation</label>
           <input id="editFormMotorisation" type="text" placeholder="ex : 420ch Euro6, 2.0 TDI…">
+        </div>
+        <div class="form-field" id="wrap-editFormChrono">
+          <label>Chronotachygraphe</label>
+          <input id="editFormChrono" type="text" placeholder="JJ/MM/AAAA" maxlength="10" oninput="formatDateChrono(this)">
+          <span class="form-hint">ex : 15/08/2026</span>
         </div>
         <div class="form-field full">
           <label>Numéro VIN</label>
@@ -717,20 +731,30 @@ var allVehicles = [];
 var currentTab = 'tous';
 
 // ── Utilitaires dates ─────────────────────────────────────────────────────────
-function daysUntil(dateStr) {
-  if (!dateStr) return Infinity;
+function parseDateStr(dateStr) {
+  if (!dateStr) return null;
   var parts = dateStr.split('/');
-  if (parts.length !== 2) return Infinity;
-  var d = new Date(parseInt(parts[1]), parseInt(parts[0]) - 1, 1);
+  if (parts.length === 3) {
+    // JJ/MM/AAAA
+    return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+  }
+  if (parts.length === 2) {
+    // MM/AAAA (legacy)
+    return new Date(parseInt(parts[1]), parseInt(parts[0]) - 1, 1);
+  }
+  return null;
+}
+
+function daysUntil(dateStr) {
+  var d = parseDateStr(dateStr);
+  if (!d) return Infinity;
   var now = new Date(); now.setHours(0,0,0,0);
   return Math.round((d - now) / 86400000);
 }
 
 function monthsUntil(dateStr) {
-  if (!dateStr) return Infinity;
-  var parts = dateStr.split('/');
-  if (parts.length !== 2) return Infinity;
-  var d = new Date(parseInt(parts[1]), parseInt(parts[0]) - 1, 1);
+  var d = parseDateStr(dateStr);
+  if (!d) return Infinity;
   var now = new Date();
   return (d.getFullYear() - now.getFullYear()) * 12 + (d.getMonth() - now.getMonth());
 }
@@ -745,6 +769,32 @@ function statusBadge(dateStr, label) {
 
 function genId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+// ── Masquer Limiteur + Chrono pour les VL et Semi-remorques ─────────────────
+function toggleVLFields(prefix) {
+  var type = document.getElementById(prefix + 'Type').value;
+  var hide = (type === 'VL' || type === 'SPL');
+  var wrapL = document.getElementById('wrap-' + prefix + 'Limiteur');
+  var wrapC = document.getElementById('wrap-' + prefix + 'Chrono');
+  if (wrapL) wrapL.style.display = hide ? 'none' : '';
+  if (wrapC) wrapC.style.display = hide ? 'none' : '';
+  if (hide) {
+    var inL = document.getElementById(prefix + 'Limiteur');
+    var inC = document.getElementById(prefix + 'Chrono');
+    if (inL) inL.value = '';
+    if (inC) inC.value = '';
+  }
+}
+
+function formatDateChrono(input) {
+  var v = input.value.replace(/\D/g, '');
+  if (v.length > 2 && v.length <= 4) {
+    v = v.slice(0,2) + '/' + v.slice(2);
+  } else if (v.length > 4) {
+    v = v.slice(0,2) + '/' + v.slice(2,4) + '/' + v.slice(4,8);
+  }
+  input.value = v;
 }
 
 function todayStr() {
@@ -848,7 +898,7 @@ function renderVehicles() {
       '</div>' +
       (v.vin ? '<div class="card-vin">VIN : ' + v.vin + '</div>' : '') +
       (v.categorie ? '<div class="card-categorie-badge">' + v.categorie + '</div>' : '') +
-      '<div class="card-badges">' + statusBadge(v.limiteur, 'Limiteur') + statusBadge(v.mine, 'Mine') + (intervEnCours > 0 ? '<span class="interv-badge">⚠ ' + intervEnCours + ' intervention(s)</span>' : '') + '</div>' +
+      '<div class="card-badges">' + statusBadge(v.limiteur, 'Limiteur') + statusBadge(v.mine, 'Mine') + (v.chrono ? '<span class="badge badge-ok">🕐 Chrono ' + v.chrono + '</span>' : '') + (intervEnCours > 0 ? '<span class="interv-badge">⚠ ' + intervEnCours + ' intervention(s)</span>' : '') + '</div>' +
       '<div class="card-footer"><span class="pieces-count">' + nbPieces + ' pièce(s)</span><span class="arrow">›</span></div>' +
     '</div>';
   }).join('');
@@ -883,9 +933,10 @@ function handleBack() {
 function filterVehicles() { renderVehicles(); }
 
 function showAddVehicle() {
-  ['formPlaque','formMarque','formLimiteur','formMine','formAnnee','formMotorisation','formVin'].forEach(function(id) { document.getElementById(id).value = ''; });
+  ['formPlaque','formMarque','formLimiteur','formMine','formAnnee','formMotorisation','formChrono','formVin'].forEach(function(id) { document.getElementById(id).value = ''; });
   document.getElementById('formType').value = 'PL';
   document.getElementById('formCategorie').value = '';
+  toggleVLFields('form');
   showView('add');
 }
 
@@ -899,17 +950,19 @@ function saveVehicle() {
   var mine   = document.getElementById('formMine').value.trim();
   var annee  = document.getElementById('formAnnee').value.trim();
   var motorisation = document.getElementById('formMotorisation').value.trim();
+  var chrono = document.getElementById('formChrono').value.trim();
   var vin    = document.getElementById('formVin').value.trim().toUpperCase();
 
   if (!plaque) { alert('La plaque est obligatoire'); return; }
-  var dateRx = /^(0[1-9]|1[0-2])\/\d{4}$/;
-  if (limiteur && !dateRx.test(limiteur)) { alert('Format limiteur invalide. Exemple : 08/2026'); return; }
-  if (mine && !dateRx.test(mine)) { alert('Format mine invalide. Exemple : 10/2026'); return; }
+  var dateRxFull = /^(0[1-9]|[12]\d|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
+  if (limiteur && !dateRxFull.test(limiteur)) { alert('Format limiteur invalide. Exemple : 15/08/2026'); return; }
+  if (mine && !dateRxFull.test(mine)) { alert('Format mine invalide. Exemple : 20/10/2026'); return; }
+  if (chrono && !dateRxFull.test(chrono)) { alert('Format chronotachygraphe invalide. Exemple : 15/08/2026'); return; }
 
   var id = genId();
   db.ref('vehicules/' + id).set({
     id: id, plaque: plaque, marque: marque, type: type, categorie: categorie,
-    limiteur: limiteur, mine: mine, annee: annee, motorisation: motorisation, vin: vin
+    limiteur: limiteur, mine: mine, annee: annee, motorisation: motorisation, chrono: chrono, vin: vin
   }).then(function() {
     showView('list');
     showToast('Véhicule ajouté ✓');
@@ -928,6 +981,7 @@ function openVehicle(id) {
     document.getElementById('detailCategorie').textContent = v.categorie || '';
     document.getElementById('editLimiteur').value = v.limiteur || '';
     document.getElementById('editMine').value = v.mine || '';
+    document.getElementById('editChrono').value = v.chrono || '';
     renderPieces(v.pieces ? Object.values(v.pieces) : []);
     renderInterventions(v.interventions ? Object.values(v.interventions) : []);
     showView('detail');
@@ -942,11 +996,13 @@ function showEditVehicle() {
     document.getElementById('editFormPlaque').value = v.plaque || '';
     document.getElementById('editFormMarque').value = v.marque || '';
     document.getElementById('editFormType').value = v.type || 'PL';
+    toggleVLFields('editForm');
     document.getElementById('editFormCategorie').value = v.categorie || '';
     document.getElementById('editFormLimiteur').value = v.limiteur || '';
     document.getElementById('editFormMine').value = v.mine || '';
     document.getElementById('editFormAnnee').value = v.annee || '';
     document.getElementById('editFormMotorisation').value = v.motorisation || '';
+    document.getElementById('editFormChrono').value = v.chrono || '';
     document.getElementById('editFormVin').value = v.vin || '';
     showView('edit');
   });
@@ -961,16 +1017,18 @@ function updateVehicle() {
   var mine   = document.getElementById('editFormMine').value.trim();
   var annee  = document.getElementById('editFormAnnee').value.trim();
   var motorisation = document.getElementById('editFormMotorisation').value.trim();
+  var chrono = document.getElementById('editFormChrono').value.trim();
   var vin    = document.getElementById('editFormVin').value.trim().toUpperCase();
 
   if (!plaque) { alert('La plaque est obligatoire'); return; }
-  var dateRx = /^(0[1-9]|1[0-2])\/\d{4}$/;
-  if (limiteur && !dateRx.test(limiteur)) { alert('Format limiteur invalide. Exemple : 08/2026'); return; }
-  if (mine && !dateRx.test(mine)) { alert('Format mine invalide. Exemple : 10/2026'); return; }
+  var dateRxFull = /^(0[1-9]|[12]\d|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
+  if (limiteur && !dateRxFull.test(limiteur)) { alert('Format limiteur invalide. Exemple : 15/08/2026'); return; }
+  if (mine && !dateRxFull.test(mine)) { alert('Format mine invalide. Exemple : 20/10/2026'); return; }
+  if (chrono && !dateRxFull.test(chrono)) { alert('Format chronotachygraphe invalide. Exemple : 15/08/2026'); return; }
 
   db.ref('vehicules/' + currentVehicleId).update({
     plaque: plaque, marque: marque, type: type, categorie: categorie,
-    limiteur: limiteur, mine: mine, annee: annee, motorisation: motorisation, vin: vin
+    limiteur: limiteur, mine: mine, annee: annee, motorisation: motorisation, chrono: chrono, vin: vin
   }).then(function() {
     document.getElementById('detailPlaque').textContent = plaque;
     document.getElementById('detailMarque').textContent = [marque, type, annee, motorisation].filter(Boolean).join(' · ');
@@ -985,10 +1043,12 @@ function updateVehicle() {
 function saveVehicleInfo() {
   var limiteur = document.getElementById('editLimiteur').value.trim();
   var mine = document.getElementById('editMine').value.trim();
-  var dateRx = /^(0[1-9]|1[0-2])\/\d{4}$/;
-  if (limiteur && !dateRx.test(limiteur)) { alert('Format limiteur invalide. Exemple : 08/2026'); return; }
-  if (mine && !dateRx.test(mine)) { alert('Format mine invalide. Exemple : 10/2026'); return; }
-  db.ref('vehicules/' + currentVehicleId).update({ limiteur: limiteur, mine: mine })
+  var chrono = document.getElementById('editChrono').value.trim();
+  var dateRxFull = /^(0[1-9]|[12]\d|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
+  if (limiteur && !dateRxFull.test(limiteur)) { alert('Format limiteur invalide. Exemple : 15/08/2026'); return; }
+  if (mine && !dateRxFull.test(mine)) { alert('Format mine invalide. Exemple : 20/10/2026'); return; }
+  if (chrono && !dateRxFull.test(chrono)) { alert('Format chronotachygraphe invalide. Exemple : 15/08/2026'); return; }
+  db.ref('vehicules/' + currentVehicleId).update({ limiteur: limiteur, mine: mine, chrono: chrono })
     .then(function() { showToast('Dates mises à jour ✓'); });
 }
 
