@@ -218,7 +218,7 @@
   .btn-save-dates:hover { background: var(--red-mid); }
 
   /* ── Pieces ── */
-  .pieces-section { padding: 0 20px 20px; }
+  .pieces-section { padding: 0 20px 120px; }
   .section-title {
     font-size: 11px; font-weight: 700; color: var(--text-dim);
     text-transform: uppercase; letter-spacing: .8px;
@@ -262,8 +262,11 @@
   .add-piece-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
 
   /* ── Interventions ── */
-  .interventions-section { padding: 0 20px 120px; }
+  .interventions-section { padding: 0 20px 20px; }
   .add-intervention-form { margin-top: 8px; display: flex; gap: 8px; align-items: flex-start; }
+  .intervention-inputs { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .intervention-inputs select, .intervention-inputs textarea { width: 100%; }
+  .intervention-cat { display: inline-block; align-self: flex-start; background: var(--red-light); border: 1px solid var(--red-mid); color: var(--red); font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px; }
   .add-intervention-form textarea {
     flex: 1; background: #fff; border: 1.5px solid var(--border);
     border-radius: 10px; padding: 10px 12px; color: var(--text);
@@ -370,10 +373,26 @@
     position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
     background: var(--red); color: #fff; font-weight: 600;
     padding: 10px 22px; border-radius: 20px;
-    opacity: 0; transition: all .3s; pointer-events: none; white-space: nowrap;
-    font-size: 13px; box-shadow: var(--shadow-md);
+    opacity: 0; transition: all .3s; pointer-events: none;
+    width: max-content; max-width: 90vw; text-align: center;
+    font-size: 13px; box-shadow: var(--shadow-md); z-index: 1000;
   }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Fenêtre de confirmation ── */
+  .confirm-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1100;
+    display: none; align-items: center; justify-content: center; padding: 24px;
+  }
+  .confirm-overlay.show { display: flex; }
+  .confirm-box {
+    background: #fff; border-radius: 18px; padding: 22px 20px 18px;
+    width: 100%; max-width: 360px; box-shadow: 0 8px 40px rgba(0,0,0,.2);
+  }
+  .confirm-msg { font-size: 15px; color: var(--text); line-height: 1.5; margin-bottom: 18px; text-align: center; }
+  .confirm-actions { display: flex; gap: 10px; }
+  .confirm-actions button { flex: 1; }
+  .done-time { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
 
   .version-bump { animation: vbump .6s ease; }
   @keyframes vbump {
@@ -424,7 +443,7 @@
     </div>
     <div class="topbar-right">
       <span class="count-pill"><span id="totalCount">0</span> véhicule(s)</span>
-      <span class="version-pill" id="versionPill">v1.0</span>
+      <span class="version-pill" id="versionPill">v1.9</span>
     </div>
   </div>
 
@@ -440,6 +459,7 @@
       <button class="type-btn" onclick="setTypeFilter(this, 'VL')">VL</button>
       <button class="type-btn" onclick="setTypeFilter(this, 'SPL')">SPL</button>
       <button class="type-btn" onclick="setTypeFilter(this, 'UTIL')">Utilitaire</button>
+      <button class="type-btn" onclick="setTypeFilter(this, 'INTERV')">🔧 Interventions</button>
     </div>
     <div id="vehicleList"></div>
   </div>
@@ -547,6 +567,39 @@
       <button class="btn-save-dates" onclick="saveVehicleInfo()">💾 Mettre à jour les dates</button>
     </div>
 
+    <!-- INTERVENTIONS À FAIRE -->
+    <div class="interventions-section">
+      <div class="section-title">Interventions à faire</div>
+      <div id="interventionsList"></div>
+      <div class="add-intervention-form">
+        <div class="intervention-inputs">
+          <select id="interventionCat" onchange="toggleSousCat()">
+            <option value="">— Catégorie —</option>
+            <option value="Pneus">⚫ Pneus</option>
+            <option value="Mécanique">🔧 Mécanique</option>
+            <option value="Entretien">🛢️ Entretien</option>
+            <option value="Autre">📌 Autre</option>
+          </select>
+          <select id="interventionSousCat" style="display:none">
+            <option value="">— Essieu —</option>
+            <option value="Essieu 1">Essieu 1</option>
+            <option value="Essieu 2">Essieu 2</option>
+            <option value="Essieu 3">Essieu 3</option>
+            <option value="Essieu 4">Essieu 4</option>
+          </select>
+          <select id="interventionOperation" style="display:none">
+            <option value="">— Opération —</option>
+            <option value="Tourner sur jantes">Tourner sur jantes</option>
+            <option value="Changement pneus">Changement pneus</option>
+            <option value="Retracer">Retracer</option>
+            <option value="Autre">Autre</option>
+          </select>
+          <textarea id="interventionText" placeholder="Précisions (facultatif) : durite avant gauche, fuite d'huile…" rows="2"></textarea>
+        </div>
+        <button class="btn-primary" onclick="addIntervention()">➕ Ajouter</button>
+      </div>
+    </div>
+
     <div class="pieces-section">
       <div class="section-title">Références pièces</div>
       <div id="piecesList"></div>
@@ -582,16 +635,6 @@
           </div>
         </div>
         <button class="btn-primary" onclick="addPiece()">Ajouter la pièce</button>
-      </div>
-    </div>
-
-    <!-- INTERVENTIONS À FAIRE -->
-    <div class="interventions-section">
-      <div class="section-title">Interventions à faire</div>
-      <div id="interventionsList"></div>
-      <div class="add-intervention-form">
-        <textarea id="interventionText" placeholder="Ex : Durite avant gauche à changer, fuite d'huile sous moteur…" rows="2"></textarea>
-        <button class="btn-primary" onclick="addIntervention()">➕ Ajouter</button>
       </div>
     </div>
   </div>
@@ -678,7 +721,7 @@
             <div class="settings-row-icon">🚛</div>
             <div>
               <div class="settings-row-label">Bonnafous Suivi Parc</div>
-              <div class="settings-row-sub">Version <span class="version-tag" id="versionTag">v1.0</span></div>
+              <div class="settings-row-sub">Version <span class="version-tag" id="versionTag">v1.9</span></div>
             </div>
           </div>
         </div>
@@ -738,6 +781,36 @@
 
 <div id="toast"></div>
 
+<div class="confirm-overlay" id="doneOverlay" onclick="if(event.target===this)closeDoneDialog()">
+  <div class="confirm-box">
+    <div class="confirm-msg">⏱ Temps passé sur l'intervention</div>
+    <div class="done-time">
+      <div class="form-field">
+        <label>Heures</label>
+        <select id="doneHeures"></select>
+      </div>
+      <div class="form-field">
+        <label>Minutes</label>
+        <select id="doneMinutes"></select>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn-secondary" onclick="closeDoneDialog()">Annuler</button>
+      <button class="btn-primary" onclick="confirmDone()">✓ Terminé</button>
+    </div>
+  </div>
+</div>
+
+<div class="confirm-overlay" id="confirmOverlay" onclick="if(event.target===this)closeConfirm(false)">
+  <div class="confirm-box">
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-actions">
+      <button class="btn-secondary" onclick="closeConfirm(false)">Annuler</button>
+      <button class="btn-primary" id="confirmYes" onclick="closeConfirm(true)">Confirmer</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── FIREBASE CONFIG ───────────────────────────────────────────────────────────
 const firebaseConfig = {
@@ -758,25 +831,28 @@ var currentTab = 'tous';
 var currentTypeFilter = '';
 
 // ── Gestion version ───────────────────────────────────────────────────────────
-function getVersion() {
-  try { return parseFloat(localStorage.getItem('bonnafous_version') || '1.0'); }
-  catch(e) { return 1.0; }
+// ⚠️ Changer ce numéro à chaque modification du code
+var APP_VERSION = '1.9';
+
+// ── Stockage local sécurisé (ne plante pas si le navigateur bloque le stockage) ──
+function storeGet(key) {
+  try { return localStorage.getItem(key); } catch(e) { return null; }
 }
-function bumpVersion() {
-  var v = Math.round((getVersion() + 0.1) * 10) / 10;
-  localStorage.setItem('bonnafous_version', v.toString());
-  updateVersionDisplay();
+function storeSet(key, value) {
+  try { localStorage.setItem(key, value); } catch(e) {}
 }
+function storeRemove(key) {
+  try { localStorage.removeItem(key); } catch(e) {}
+}
+
+function bumpVersion() { /* plus utilisé : la version ne change qu'avec le code */ }
+
 function updateVersionDisplay() {
-  var v = 'v' + getVersion().toFixed(1);
+  var v = 'v' + APP_VERSION;
   var pill = document.getElementById('versionPill');
   var tag  = document.getElementById('versionTag');
-  if (pill) {
-    pill.textContent = v;
-    pill.classList.add('version-bump');
-    setTimeout(function() { pill.classList.remove('version-bump'); }, 600);
-  }
-  if (tag) tag.textContent = v;
+  if (pill) pill.textContent = v;
+  if (tag)  tag.textContent = v;
 }
 
 // ── Utilitaires dates ─────────────────────────────────────────────────────────
@@ -862,8 +938,8 @@ function subscribeVehicles() {
     // Rafraîchir la fiche ouverte si besoin
     if (currentVehicleId && data[currentVehicleId]) {
       var v = data[currentVehicleId];
-      renderPieces(v.pieces || []);
-      renderInterventions(v.interventions || []);
+      renderPieces(v.pieces ? Object.values(v.pieces) : []);
+      renderInterventions(v.interventions ? Object.values(v.interventions) : []);
     }
   });
 }
@@ -891,6 +967,11 @@ function updateNavBadges(vehicles) {
   document.getElementById('label-expire').innerHTML = 'Expirés' + badge(counts.expire, '');
 }
 
+function hasPendingIntervention(v) {
+  if (!v.interventions) return false;
+  return Object.values(v.interventions).some(function(i) { return !i.done; });
+}
+
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.nav-tab').forEach(function(el) { el.classList.remove('active'); });
@@ -910,7 +991,9 @@ function renderVehicles() {
     if (currentTab === 'expire') return s === 'expire';
     return true;
   }).filter(function(v) {
-    if (currentTypeFilter && (v.type || '') !== currentTypeFilter) return false;
+    if (currentTypeFilter === 'INTERV') {
+      if (!hasPendingIntervention(v)) return false;
+    } else if (currentTypeFilter && (v.type || '') !== currentTypeFilter) return false;
     return v.plaque.toLowerCase().includes(search) || (v.marque || '').toLowerCase().includes(search) || (v.categorie || '').toLowerCase().includes(search);
   });
 
@@ -969,8 +1052,11 @@ function showSettings() {
 }
 
 function logout() {
-  if (!confirm('Se déconnecter ? Vous devrez rentrer le code d\'équipe à la prochaine ouverture.')) return;
-  localStorage.removeItem('bonnafous_auth');
+  appConfirm('Se déconnecter ? Vous devrez rentrer le code d\'équipe à la prochaine ouverture.', doLogout, 'Se déconnecter');
+}
+
+function doLogout() {
+  storeRemove('bonnafous_auth');
   document.getElementById('mainApp').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('loginCode').value = '';
@@ -1010,11 +1096,11 @@ function saveVehicle() {
   var chrono = document.getElementById('formChrono').value.trim();
   var vin    = document.getElementById('formVin').value.trim().toUpperCase();
 
-  if (!plaque) { alert('La plaque est obligatoire'); return; }
+  if (!plaque) { showToast('La plaque est obligatoire'); return; }
   var dateRxFull = /^(0[1-9]|[12]\d|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
-  if (limiteur && !dateRxFull.test(limiteur)) { alert('Format limiteur invalide. Exemple : 15/08/2026'); return; }
-  if (mine && !dateRxFull.test(mine)) { alert('Format mine invalide. Exemple : 20/10/2026'); return; }
-  if (chrono && !dateRxFull.test(chrono)) { alert('Format chronotachygraphe invalide. Exemple : 15/08/2026'); return; }
+  if (limiteur && !dateRxFull.test(limiteur)) { showToast('Format limiteur invalide. Exemple : 15/08/2026'); return; }
+  if (mine && !dateRxFull.test(mine)) { showToast('Format mine invalide. Exemple : 20/10/2026'); return; }
+  if (chrono && !dateRxFull.test(chrono)) { showToast('Format chronotachygraphe invalide. Exemple : 15/08/2026'); return; }
 
   var id = genId();
   db.ref('vehicules/' + id).set({
@@ -1023,7 +1109,7 @@ function saveVehicle() {
   }).then(function() {
     showView('list');
     bumpVersion(); showToast('Véhicule ajouté ✓');
-  }).catch(function(e) { alert('Erreur : ' + e.message); });
+  }).catch(function(e) { showToast('Erreur : ' + e.message); });
 }
 
 // ── Ouvrir détail ─────────────────────────────────────────────────────────────
@@ -1077,11 +1163,11 @@ function updateVehicle() {
   var chrono = document.getElementById('editFormChrono').value.trim();
   var vin    = document.getElementById('editFormVin').value.trim().toUpperCase();
 
-  if (!plaque) { alert('La plaque est obligatoire'); return; }
+  if (!plaque) { showToast('La plaque est obligatoire'); return; }
   var dateRxFull = /^(0[1-9]|[12]\d|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
-  if (limiteur && !dateRxFull.test(limiteur)) { alert('Format limiteur invalide. Exemple : 15/08/2026'); return; }
-  if (mine && !dateRxFull.test(mine)) { alert('Format mine invalide. Exemple : 20/10/2026'); return; }
-  if (chrono && !dateRxFull.test(chrono)) { alert('Format chronotachygraphe invalide. Exemple : 15/08/2026'); return; }
+  if (limiteur && !dateRxFull.test(limiteur)) { showToast('Format limiteur invalide. Exemple : 15/08/2026'); return; }
+  if (mine && !dateRxFull.test(mine)) { showToast('Format mine invalide. Exemple : 20/10/2026'); return; }
+  if (chrono && !dateRxFull.test(chrono)) { showToast('Format chronotachygraphe invalide. Exemple : 15/08/2026'); return; }
 
   db.ref('vehicules/' + currentVehicleId).update({
     plaque: plaque, marque: marque, type: type, categorie: categorie,
@@ -1102,20 +1188,21 @@ function saveVehicleInfo() {
   var mine = document.getElementById('editMine').value.trim();
   var chrono = document.getElementById('editChrono').value.trim();
   var dateRxFull = /^(0[1-9]|[12]\d|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
-  if (limiteur && !dateRxFull.test(limiteur)) { alert('Format limiteur invalide. Exemple : 15/08/2026'); return; }
-  if (mine && !dateRxFull.test(mine)) { alert('Format mine invalide. Exemple : 20/10/2026'); return; }
-  if (chrono && !dateRxFull.test(chrono)) { alert('Format chronotachygraphe invalide. Exemple : 15/08/2026'); return; }
+  if (limiteur && !dateRxFull.test(limiteur)) { showToast('Format limiteur invalide. Exemple : 15/08/2026'); return; }
+  if (mine && !dateRxFull.test(mine)) { showToast('Format mine invalide. Exemple : 20/10/2026'); return; }
+  if (chrono && !dateRxFull.test(chrono)) { showToast('Format chronotachygraphe invalide. Exemple : 15/08/2026'); return; }
   db.ref('vehicules/' + currentVehicleId).update({ limiteur: limiteur, mine: mine, chrono: chrono })
     .then(function() { bumpVersion(); showToast('Dates mises à jour ✓'); });
 }
 
 // ── Supprimer véhicule ────────────────────────────────────────────────────────
 function deleteVehicle() {
-  if (!confirm('Supprimer définitivement ce véhicule et toutes ses pièces ?')) return;
-  db.ref('vehicules/' + currentVehicleId).remove().then(function() {
-    showView('list');
-    bumpVersion(); showToast('Véhicule supprimé');
-  });
+  appConfirm('Supprimer définitivement ce véhicule et toutes ses pièces ?', function() {
+    db.ref('vehicules/' + currentVehicleId).remove().then(function() {
+      showView('list');
+      bumpVersion(); showToast('Véhicule supprimé');
+    }).catch(function(e) { showToast('Erreur : ' + e.message); });
+  }, 'Supprimer');
 }
 
 // ── Pièces ────────────────────────────────────────────────────────────────────
@@ -1153,7 +1240,7 @@ function addPiece() {
   var ref   = document.getElementById('pieceRef').value.trim().toUpperCase();
   var cat   = document.getElementById('pieceCat').value.trim() || 'Filtres';
   var fourn = document.getElementById('pieceFournisseur').value.trim();
-  if (!label || !ref) { alert('Désignation et référence sont obligatoires'); return; }
+  if (!label || !ref) { showToast('Désignation et référence sont obligatoires'); return; }
   var id = genId();
   db.ref('vehicules/' + currentVehicleId + '/pieces/' + id).set({
     id: id, label: label, reference: ref, categorie: cat, fournisseur: fourn
@@ -1191,16 +1278,18 @@ function savePieceEdit(pieceId) {
   var ref   = document.getElementById('ei-ref-' + pieceId).value.trim().toUpperCase();
   var cat   = document.getElementById('ei-cat-' + pieceId).value.trim() || 'Filtres';
   var fourn = document.getElementById('ei-fourn-' + pieceId).value.trim();
-  if (!label || !ref) { alert('Désignation et référence sont obligatoires'); return; }
+  if (!label || !ref) { showToast('Désignation et référence sont obligatoires'); return; }
   db.ref('vehicules/' + currentVehicleId + '/pieces/' + pieceId).update({
     label: label, reference: ref, categorie: cat, fournisseur: fourn
   }).then(function() { bumpVersion(); saveFournisseur(fourn); showToast('Pièce modifiée ✓'); refreshPieces(); });
 }
 
 function deletePiece(pieceId) {
-  if (!confirm('Supprimer cette pièce ?')) return;
-  db.ref('vehicules/' + currentVehicleId + '/pieces/' + pieceId).remove()
-    .then(function() { refreshPieces(); });
+  appConfirm('Supprimer cette pièce ?', function() {
+    db.ref('vehicules/' + currentVehicleId + '/pieces/' + pieceId).remove()
+      .then(function() { refreshPieces(); showToast('Pièce supprimée'); })
+      .catch(function(e) { showToast('Erreur : ' + e.message); });
+  }, 'Supprimer');
 }
 
 function refreshPieces() {
@@ -1222,8 +1311,9 @@ function renderInterventions(interventions) {
   container.innerHTML = sorted.map(function(i) {
     return '<div class="intervention-row' + (i.done ? ' done' : '') + '">' +
       '<div class="intervention-body">' +
-        '<div class="intervention-text">' + i.text + '</div>' +
-        '<div class="intervention-meta">Noté le ' + i.date + (i.done && i.doneDate ? ' · Terminé le ' + i.doneDate : '') + '</div>' +
+        (i.categorie ? '<span class="intervention-cat">' + i.categorie + (i.sousCategorie ? ' · ' + i.sousCategorie : '') + (i.operation ? ' · ' + i.operation : '') + '</span>' : '') +
+        (i.text ? '<div class="intervention-text">' + i.text + '</div>' : '') +
+        '<div class="intervention-meta">Noté le ' + i.date + (i.done && i.doneDate ? ' · Terminé le ' + i.doneDate : '') + (i.done && i.duree ? ' · ⏱ ' + formatDuree(i.duree) : '') + '</div>' +
       '</div>' +
       '<div class="intervention-actions">' +
         '<button class="btn-done-intervention' + (i.done ? ' undone' : '') + '" onclick="toggleIntervention(\'' + i.id + '\')">' + (i.done ? '↩ Rouvrir' : '✓ Fait') + '</button>' +
@@ -1233,36 +1323,94 @@ function renderInterventions(interventions) {
   }).join('');
 }
 
+function toggleSousCat() {
+  var isPneus = document.getElementById('interventionCat').value === 'Pneus';
+  ['interventionSousCat', 'interventionOperation'].forEach(function(id) {
+    var sel = document.getElementById(id);
+    sel.style.display = isPneus ? '' : 'none';
+    if (!isPneus) sel.value = '';
+  });
+}
+
 function addIntervention() {
   var text = document.getElementById('interventionText').value.trim();
-  if (!text) { alert('Décrivez l\'intervention à faire'); return; }
+  var cat = document.getElementById('interventionCat').value;
+  var sousCat = cat === 'Pneus' ? document.getElementById('interventionSousCat').value : '';
+  if (!cat) { showToast('Choisissez une catégorie (Pneus, Mécanique, Entretien ou Autre)'); return; }
+  var operation = cat === 'Pneus' ? document.getElementById('interventionOperation').value : '';
+  if (cat === 'Pneus' && !sousCat) { showToast('Choisissez l\'essieu concerné (Essieu 1 à 4)'); return; }
+  if (cat === 'Pneus' && !operation) { showToast('Choisissez l\'opération (Tourner sur jantes, Changement pneus, Retracer ou Autre)'); return; }
   var id = genId();
   db.ref('vehicules/' + currentVehicleId + '/interventions/' + id).set({
-    id: id, text: text, date: todayStr(), done: false, doneDate: null
+    id: id, categorie: cat, sousCategorie: sousCat, operation: operation, text: text, date: todayStr(), done: false, doneDate: null
   }).then(function() {
     document.getElementById('interventionText').value = '';
+    document.getElementById('interventionCat').value = '';
+    toggleSousCat();
     refreshInterventions();
     bumpVersion(); showToast('Intervention ajoutée ✓');
-  });
+  }).catch(function(e) { showToast('Erreur : ' + e.message); });
 }
 
 function toggleIntervention(intervId) {
   db.ref('vehicules/' + currentVehicleId + '/interventions/' + intervId).once('value').then(function(snap) {
     var i = snap.val();
-    var newDone = !i.done;
-    db.ref('vehicules/' + currentVehicleId + '/interventions/' + intervId).update({
-      done: newDone, doneDate: newDone ? todayStr() : null
+    if (!i) { showToast('Intervention introuvable'); refreshInterventions(); return; }
+    if (!i.done) { openDoneDialog(intervId); return; }
+    // Rouvrir : on efface la date et la durée
+    return db.ref('vehicules/' + currentVehicleId + '/interventions/' + intervId).update({
+      done: false, doneDate: null, duree: null
     }).then(function() {
       refreshInterventions();
-      bumpVersion(); showToast(newDone ? 'Intervention terminée ✓' : 'Intervention réouverte');
+      showToast('Intervention réouverte');
     });
-  });
+  }).catch(function(e) { showToast('Erreur : ' + e.message); });
+}
+
+// ── Fenêtre « Fait » : temps passé ────────────────────────────────────────────
+var doneIntervId = null;
+function openDoneDialog(intervId) {
+  doneIntervId = intervId;
+  var selH = document.getElementById('doneHeures'), selM = document.getElementById('doneMinutes');
+  if (!selH.options.length) {
+    for (var h = 0; h <= 24; h++) selH.add(new Option(h + ' h', h));
+    for (var m = 0; m < 60; m += 5) selM.add(new Option(m + ' min', m));
+  }
+  document.getElementById('doneHeures').value = '0';
+  document.getElementById('doneMinutes').value = '0';
+  document.getElementById('doneOverlay').classList.add('show');
+}
+function closeDoneDialog() {
+  document.getElementById('doneOverlay').classList.remove('show');
+  doneIntervId = null;
+}
+function confirmDone() {
+  var h = parseInt(document.getElementById('doneHeures').value, 10) || 0;
+  var m = parseInt(document.getElementById('doneMinutes').value, 10) || 0;
+  var total = h * 60 + m;
+  if (total <= 0) { showToast('Indiquez le temps passé sur l\'intervention'); return; }
+  var id = doneIntervId;
+  closeDoneDialog();
+  db.ref('vehicules/' + currentVehicleId + '/interventions/' + id).update({
+    done: true, doneDate: todayStr(), duree: total
+  }).then(function() {
+    refreshInterventions();
+    showToast('Intervention terminée ✓ (' + formatDuree(total) + ')');
+  }).catch(function(e) { showToast('Erreur : ' + e.message); });
+}
+function formatDuree(min) {
+  var h = Math.floor(min / 60), m = min % 60;
+  if (h && m) return h + ' h ' + (m < 10 ? '0' : '') + m;
+  if (h) return h + ' h';
+  return m + ' min';
 }
 
 function deleteIntervention(intervId) {
-  if (!confirm('Supprimer cette intervention ?')) return;
-  db.ref('vehicules/' + currentVehicleId + '/interventions/' + intervId).remove()
-    .then(function() { refreshInterventions(); });
+  appConfirm('Supprimer cette intervention ?', function() {
+    db.ref('vehicules/' + currentVehicleId + '/interventions/' + intervId).remove()
+      .then(function() { refreshInterventions(); showToast('Intervention supprimée'); })
+      .catch(function(e) { showToast('Erreur : ' + e.message); });
+  }, 'Supprimer');
 }
 
 function refreshInterventions() {
@@ -1273,13 +1421,13 @@ function refreshInterventions() {
 
 // ── Mémoire fournisseurs (localStorage OK pour ça) ────────────────────────────
 function getFournisseurs() {
-  try { return JSON.parse(localStorage.getItem('bonnafous_fournisseurs') || '[]'); }
+  try { return JSON.parse(storeGet('bonnafous_fournisseurs') || '[]'); }
   catch(e) { return []; }
 }
 function saveFournisseur(nom) {
   if (!nom) return;
   var list = getFournisseurs();
-  if (!list.includes(nom)) { list.push(nom); list.sort(); localStorage.setItem('bonnafous_fournisseurs', JSON.stringify(list)); }
+  if (!list.includes(nom)) { list.push(nom); list.sort(); storeSet('bonnafous_fournisseurs', JSON.stringify(list)); }
   refreshFournisseurDatalist();
 }
 function refreshFournisseurDatalist() {
@@ -1289,11 +1437,28 @@ function refreshFournisseurDatalist() {
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
+var toastTimer = null;
 function showToast(msg) {
   var t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(function() { t.classList.remove('show'); }, 2500);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 3000);
+}
+
+// ── Confirmation intégrée (remplace confirm() du navigateur) ────────────────────
+var confirmCallback = null;
+function appConfirm(msg, onYes, yesLabel) {
+  document.getElementById('confirmMsg').textContent = msg;
+  document.getElementById('confirmYes').textContent = yesLabel || 'Confirmer';
+  confirmCallback = onYes;
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+function closeConfirm(yes) {
+  document.getElementById('confirmOverlay').classList.remove('show');
+  var cb = confirmCallback;
+  confirmCallback = null;
+  if (yes && cb) cb();
 }
 
 
@@ -1311,12 +1476,12 @@ function doLogin() {
     document.getElementById('loginCode').focus();
     return;
   }
-  localStorage.setItem('bonnafous_auth', Date.now().toString());
+  storeSet('bonnafous_auth', Date.now().toString());
   unlockApp();
 }
 
 function checkAuth() {
-  var stored = localStorage.getItem('bonnafous_auth');
+  var stored = storeGet('bonnafous_auth');
   if (stored) {
     var age = Date.now() - parseInt(stored);
     if (age < 30 * 24 * 60 * 60 * 1000) {
@@ -1324,7 +1489,7 @@ function checkAuth() {
       return;
     }
     // Session expirée — effacer
-    localStorage.removeItem('bonnafous_auth');
+    storeRemove('bonnafous_auth');
   }
   // Afficher l'écran de connexion
   document.getElementById('loginScreen').style.display = 'flex';
