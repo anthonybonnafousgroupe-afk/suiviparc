@@ -263,6 +263,13 @@
 
   /* ── Interventions ── */
   .interventions-section { padding: 0 20px 20px; }
+  .btn-export-excel {
+    width: 100%; margin-bottom: 10px; padding: 10px 14px; border-radius: 10px;
+    background: #eafaf2; color: #1d6f42; border: 1.5px solid #b7e8cf;
+    font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background .15s;
+  }
+  .btn-export-excel:hover { background: #d3f3e2; }
+  .btn-export-excel:disabled { opacity: .6; cursor: wait; }
   .add-intervention-form { margin-top: 8px; display: flex; gap: 8px; align-items: flex-start; }
   .intervention-inputs { flex: 1; display: flex; flex-direction: column; gap: 8px; }
   .intervention-inputs select, .intervention-inputs textarea { width: 100%; }
@@ -392,6 +399,18 @@
   .confirm-msg { font-size: 15px; color: var(--text); line-height: 1.5; margin-bottom: 18px; text-align: center; }
   .confirm-actions { display: flex; gap: 10px; }
   .confirm-actions button { flex: 1; }
+  /* ── Suivi pneus ── */
+  .pneus-view { padding: 20px 20px 120px; }
+  .pneus-view .settings-header { margin-bottom: 12px; }
+  .pneus-summary { display: flex; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+  .pneus-list-group { display: flex; flex-direction: column; gap: 10px; }
+  .pneus-view .tab-section-title { padding: 14px 0 8px; }
+  .pneu-card.done { opacity: .65; }
+  .pneu-card .intervention-text { margin-bottom: 4px; }
+  .done-pneus { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+  .done-pneus input, .done-pneus select { width: 100%; }
+  .confirm-box { max-height: 90vh; overflow-y: auto; }
+  .intervention-realise { font-size: 12px; color: var(--ok); font-weight: 600; }
   .done-time { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
 
   .version-bump { animation: vbump .6s ease; }
@@ -443,7 +462,7 @@
     </div>
     <div class="topbar-right">
       <span class="count-pill"><span id="totalCount">0</span> véhicule(s)</span>
-      <span class="version-pill" id="versionPill">v1.9</span>
+      <span class="version-pill" id="versionPill">v2.2</span>
     </div>
   </div>
 
@@ -570,6 +589,7 @@
     <!-- INTERVENTIONS À FAIRE -->
     <div class="interventions-section">
       <div class="section-title">Interventions à faire</div>
+      <button class="btn-export-excel" onclick="exportInterventionsExcel()">📊 Exporter en Excel (pour le mécano)</button>
       <div id="interventionsList"></div>
       <div class="add-intervention-form">
         <div class="intervention-inputs">
@@ -710,6 +730,15 @@
   </div>
 
   <!-- VUE PARAMÈTRES -->
+  <!-- VUE SUIVI PNEUS -->
+  <div class="view" id="view-pneus">
+    <div class="pneus-view">
+      <div class="settings-header">Suivi pneus</div>
+      <div class="pneus-summary" id="pneusSummary"></div>
+      <div id="pneusList"></div>
+    </div>
+  </div>
+
   <div class="view" id="view-settings">
     <div class="settings-view">
       <div class="settings-header">Paramètres</div>
@@ -721,7 +750,7 @@
             <div class="settings-row-icon">🚛</div>
             <div>
               <div class="settings-row-label">Bonnafous Suivi Parc</div>
-              <div class="settings-row-sub">Version <span class="version-tag" id="versionTag">v1.9</span></div>
+              <div class="settings-row-sub">Version <span class="version-tag" id="versionTag">v2.2</span></div>
             </div>
           </div>
         </div>
@@ -774,6 +803,9 @@
   <button class="nav-tab tab-expire" id="tab-expire" onclick="switchTab('expire')">
     <span class="nav-icon">🔴</span><span id="label-expire">Expirés</span>
   </button>
+  <button class="nav-tab tab-pneus" id="tab-pneus" onclick="showPneus()">
+    <span class="nav-icon">⚫</span><span id="label-pneus">Pneus</span>
+  </button>
   <button class="nav-tab tab-settings" id="tab-settings" onclick="showSettings()">
     <span class="nav-icon">⚙️</span>Paramètres
   </button>
@@ -783,7 +815,30 @@
 
 <div class="confirm-overlay" id="doneOverlay" onclick="if(event.target===this)closeDoneDialog()">
   <div class="confirm-box">
-    <div class="confirm-msg">⏱ Temps passé sur l'intervention</div>
+    <div class="confirm-msg" id="doneTitle">⏱ Temps passé sur l'intervention</div>
+    <div id="donePneusFields" class="done-pneus" style="display:none">
+      <div class="form-field">
+        <label>Kilométrage du camion *</label>
+        <input id="doneKm" type="number" inputmode="numeric" min="0" placeholder="ex : 125000">
+      </div>
+      <div class="form-field">
+        <label>Date de réalisation *</label>
+        <input id="doneDateInput" type="text" placeholder="JJ/MM/AAAA" maxlength="10" oninput="formatDateChrono(this)">
+      </div>
+      <div class="form-field">
+        <label>Intervention réellement réalisée *</label>
+        <select id="doneOperation">
+          <option value="Tourner sur jantes">Tourner sur jantes</option>
+          <option value="Changement pneus">Changement pneus</option>
+          <option value="Retracer">Retracer</option>
+          <option value="Autre">Autre</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Précisions (facultatif)</label>
+        <input id="doneNote" type="text" placeholder="ex : 2 pneus changés côté gauche">
+      </div>
+    </div>
     <div class="done-time">
       <div class="form-field">
         <label>Heures</label>
@@ -832,7 +887,7 @@ var currentTypeFilter = '';
 
 // ── Gestion version ───────────────────────────────────────────────────────────
 // ⚠️ Changer ce numéro à chaque modification du code
-var APP_VERSION = '1.9';
+var APP_VERSION = '2.2';
 
 // ── Stockage local sécurisé (ne plante pas si le navigateur bloque le stockage) ──
 function storeGet(key) {
@@ -935,6 +990,7 @@ function subscribeVehicles() {
     renderVehicles();
     document.getElementById('totalCount').textContent = allVehicles.length;
     updateNavBadges(allVehicles);
+    if (document.getElementById('view-pneus').classList.contains('active')) renderPneus();
     // Rafraîchir la fiche ouverte si besoin
     if (currentVehicleId && data[currentVehicleId]) {
       var v = data[currentVehicleId];
@@ -965,6 +1021,8 @@ function updateNavBadges(vehicles) {
   function badge(n, cls) { return n > 0 ? '<span class="nav-badge ' + cls + '">' + n + '</span>' : ''; }
   document.getElementById('label-avenir').innerHTML = 'À venir' + badge(counts.avenir, 'badge-warn-count');
   document.getElementById('label-expire').innerHTML = 'Expirés' + badge(counts.expire, '');
+  var pneusTodo = getPneusInterventions().filter(function(x) { return !x.i.done; }).length;
+  document.getElementById('label-pneus').innerHTML = 'Pneus' + badge(pneusTodo, 'badge-warn-count');
 }
 
 function hasPendingIntervention(v) {
@@ -976,6 +1034,7 @@ function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.nav-tab').forEach(function(el) { el.classList.remove('active'); });
   document.getElementById('tab-' + tab).classList.add('active');
+  showView('list');
   renderVehicles();
 }
 
@@ -1038,11 +1097,82 @@ function renderVehicles() {
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
+var MAIN_VIEWS = ['list', 'settings', 'pneus'];
+var lastMainView = 'list';
+
 function showView(view) {
+  var isMain = MAIN_VIEWS.indexOf(view) !== -1;
+  if (isMain) lastMainView = view;
   document.querySelectorAll('.view').forEach(function(el) { el.classList.remove('active'); });
   document.getElementById('view-' + view).classList.add('active');
-  document.getElementById('btnBack').classList.toggle('visible', view !== 'list' && view !== 'settings');
-  document.getElementById('bottomNav').classList.toggle('hidden', view !== 'list' && view !== 'settings');
+  document.getElementById('btnBack').classList.toggle('visible', !isMain);
+  document.getElementById('bottomNav').classList.toggle('hidden', !isMain);
+  if (view === 'list') {
+    document.querySelectorAll('.nav-tab').forEach(function(el) { el.classList.remove('active'); });
+    document.getElementById('tab-' + currentTab).classList.add('active');
+  }
+  if (view === 'pneus') renderPneus();
+}
+
+function showPneus() {
+  document.querySelectorAll('.nav-tab').forEach(function(el) { el.classList.remove('active'); });
+  document.getElementById('tab-pneus').classList.add('active');
+  showView('pneus');
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function getPneusInterventions() {
+  var items = [];
+  allVehicles.forEach(function(v) {
+    if (!v.interventions) return;
+    Object.values(v.interventions).forEach(function(i) {
+      if (i && i.categorie === 'Pneus') items.push({ v: v, i: i });
+    });
+  });
+  return items;
+}
+
+function renderPneus() {
+  var items = getPneusInterventions();
+  var todo = items.filter(function(x) { return !x.i.done; });
+  var done = items.filter(function(x) { return x.i.done; });
+  todo.sort(function(a, b) { return (parseDateStr(a.i.date) || 0) - (parseDateStr(b.i.date) || 0); });
+  done.sort(function(a, b) { return (parseDateStr(b.i.doneDate) || 0) - (parseDateStr(a.i.doneDate) || 0); });
+
+  document.getElementById('pneusSummary').innerHTML =
+    '<span class="badge ' + (todo.length ? 'badge-warn' : 'badge-ok') + '">⚠ ' + todo.length + ' à faire</span>' +
+    '<span class="badge badge-ok">✓ ' + done.length + ' terminée(s)</span>';
+
+  function card(x) {
+    var i = x.i, v = x.v;
+    var detail = [i.sousCategorie, i.operation].filter(Boolean).join(' · ') || 'Pneus';
+    var meta = 'Noté le ' + escHtml(i.date) + doneMetaHtml(i);
+    return '<div class="vehicle-card pneu-card' + (i.done ? ' done' : ' card-warn') + '" onclick="openVehicle(\'' + v.id + '\')">' +
+      '<div class="card-header">' +
+        '<div class="plaque">' + escHtml(v.plaque) + '</div>' +
+        '<div class="marque">' + escHtml([v.marque, v.type, v.categorie].filter(Boolean).join(' · ')) + '</div>' +
+      '</div>' +
+      '<div class="card-badges"><span class="intervention-cat">' + escHtml(detail) + '</span></div>' +
+      (i.text ? '<div class="intervention-text">' + escHtml(i.text) + '</div>' : '') +
+      doneRealiseHtml(i) +
+      '<div class="card-footer"><span>' + meta + '</span><span class="arrow">›</span></div>' +
+    '</div>';
+  }
+
+  var html = '<div class="tab-section-title">À faire</div>';
+  html += todo.length
+    ? '<div class="pneus-list-group">' + todo.map(card).join('') + '</div>'
+    : '<div class="interventions-empty">Aucune intervention pneus à faire 🎉</div>';
+  html += '<div class="tab-section-title">Historique</div>';
+  html += done.length
+    ? '<div class="pneus-list-group">' + done.slice(0, 50).map(card).join('') + '</div>'
+    : '<div class="interventions-empty">Aucune intervention pneus terminée pour l\'instant.</div>';
+  document.getElementById('pneusList').innerHTML = html;
 }
 
 function showSettings() {
@@ -1064,7 +1194,7 @@ function doLogout() {
 }
 
 function handleBack() {
-  showView('list');
+  showView(lastMainView);
 }
 function filterVehicles() { renderVehicles(); }
 
@@ -1313,7 +1443,8 @@ function renderInterventions(interventions) {
       '<div class="intervention-body">' +
         (i.categorie ? '<span class="intervention-cat">' + i.categorie + (i.sousCategorie ? ' · ' + i.sousCategorie : '') + (i.operation ? ' · ' + i.operation : '') + '</span>' : '') +
         (i.text ? '<div class="intervention-text">' + i.text + '</div>' : '') +
-        '<div class="intervention-meta">Noté le ' + i.date + (i.done && i.doneDate ? ' · Terminé le ' + i.doneDate : '') + (i.done && i.duree ? ' · ⏱ ' + formatDuree(i.duree) : '') + '</div>' +
+        doneRealiseHtml(i) +
+        '<div class="intervention-meta">Noté le ' + i.date + doneMetaHtml(i) + '</div>' +
       '</div>' +
       '<div class="intervention-actions">' +
         '<button class="btn-done-intervention' + (i.done ? ' undone' : '') + '" onclick="toggleIntervention(\'' + i.id + '\')">' + (i.done ? '↩ Rouvrir' : '✓ Fait') + '</button>' +
@@ -1356,10 +1487,10 @@ function toggleIntervention(intervId) {
   db.ref('vehicules/' + currentVehicleId + '/interventions/' + intervId).once('value').then(function(snap) {
     var i = snap.val();
     if (!i) { showToast('Intervention introuvable'); refreshInterventions(); return; }
-    if (!i.done) { openDoneDialog(intervId); return; }
-    // Rouvrir : on efface la date et la durée
+    if (!i.done) { openDoneDialog(intervId, i); return; }
+    // Rouvrir : on efface les infos de réalisation
     return db.ref('vehicules/' + currentVehicleId + '/interventions/' + intervId).update({
-      done: false, doneDate: null, duree: null
+      done: false, doneDate: null, duree: null, km: null, operationRealisee: null, noteRealisation: null
     }).then(function() {
       refreshInterventions();
       showToast('Intervention réouverte');
@@ -1369,8 +1500,18 @@ function toggleIntervention(intervId) {
 
 // ── Fenêtre « Fait » : temps passé ────────────────────────────────────────────
 var doneIntervId = null;
-function openDoneDialog(intervId) {
+var doneIsPneus = false;
+function openDoneDialog(intervId, interv) {
   doneIntervId = intervId;
+  doneIsPneus = !!(interv && interv.categorie === 'Pneus');
+  document.getElementById('donePneusFields').style.display = doneIsPneus ? '' : 'none';
+  document.getElementById('doneTitle').textContent = doneIsPneus ? '⚫ Intervention pneus réalisée' : '⏱ Temps passé sur l\'intervention';
+  if (doneIsPneus) {
+    document.getElementById('doneKm').value = '';
+    document.getElementById('doneDateInput').value = todayStr();
+    document.getElementById('doneOperation').value = interv.operation || 'Changement pneus';
+    document.getElementById('doneNote').value = '';
+  }
   var selH = document.getElementById('doneHeures'), selM = document.getElementById('doneMinutes');
   if (!selH.options.length) {
     for (var h = 0; h <= 24; h++) selH.add(new Option(h + ' h', h));
@@ -1388,21 +1529,187 @@ function confirmDone() {
   var h = parseInt(document.getElementById('doneHeures').value, 10) || 0;
   var m = parseInt(document.getElementById('doneMinutes').value, 10) || 0;
   var total = h * 60 + m;
+  var update = { done: true, doneDate: todayStr(), duree: total };
+  if (doneIsPneus) {
+    var kmStr = document.getElementById('doneKm').value.trim();
+    var km = parseInt(kmStr, 10);
+    var dateReal = document.getElementById('doneDateInput').value.trim();
+    var dateRxFull = /^(0[1-9]|[12]\d|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
+    if (!kmStr || isNaN(km) || km < 0) { showToast('Indiquez le kilométrage du camion'); return; }
+    if (!dateRxFull.test(dateReal)) { showToast('Date de réalisation invalide. Exemple : 15/08/2026'); return; }
+    update.km = km;
+    update.doneDate = dateReal;
+    update.operationRealisee = document.getElementById('doneOperation').value;
+    update.noteRealisation = document.getElementById('doneNote').value.trim();
+  }
   if (total <= 0) { showToast('Indiquez le temps passé sur l\'intervention'); return; }
   var id = doneIntervId;
   closeDoneDialog();
-  db.ref('vehicules/' + currentVehicleId + '/interventions/' + id).update({
-    done: true, doneDate: todayStr(), duree: total
-  }).then(function() {
+  db.ref('vehicules/' + currentVehicleId + '/interventions/' + id).update(update).then(function() {
     refreshInterventions();
     showToast('Intervention terminée ✓ (' + formatDuree(total) + ')');
   }).catch(function(e) { showToast('Erreur : ' + e.message); });
 }
+// Infos de réalisation affichées sous une intervention terminée
+function doneMetaHtml(i) {
+  if (!i.done) return '';
+  return (i.doneDate ? ' · Terminé le ' + escHtml(i.doneDate) : '') +
+    (i.km != null && i.km !== '' ? ' · ' + Number(i.km).toLocaleString('fr-FR') + ' km' : '') +
+    (i.duree ? ' · ⏱ ' + formatDuree(i.duree) : '');
+}
+function doneRealiseHtml(i) {
+  if (!i.done || !i.operationRealisee) return '';
+  return '<div class="intervention-realise">✔ Réalisé : ' + escHtml(i.operationRealisee) +
+    (i.noteRealisation ? ' — ' + escHtml(i.noteRealisation) : '') + '</div>';
+}
+
 function formatDuree(min) {
   var h = Math.floor(min / 60), m = min % 60;
   if (h && m) return h + ' h ' + (m < 10 ? '0' : '') + m;
   if (h) return h + ' h';
   return m + ' min';
+}
+
+// ── Export Excel des interventions à réaliser (fiche mécano) ───────────────────
+function loadExcelJS() {
+  if (window.ExcelJS) return Promise.resolve();
+  return new Promise(function(resolve, reject) {
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+    s.onload = resolve;
+    s.onerror = function() { reject(new Error('module Excel non chargé (vérifiez la connexion internet)')); };
+    document.head.appendChild(s);
+  });
+}
+
+function exportInterventionsExcel() {
+  var v = allVehicles.find(function(x) { return x.id === currentVehicleId; });
+  if (!v) { showToast('Véhicule introuvable'); return; }
+  var todo = v.interventions ? Object.values(v.interventions).filter(function(i) { return i && !i.done; }) : [];
+  if (!todo.length) { showToast('Aucune intervention à réaliser sur ce véhicule'); return; }
+  todo.sort(function(a, b) { return (parseDateStr(a.date) || 0) - (parseDateStr(b.date) || 0); });
+
+  var btn = document.querySelector('.btn-export-excel');
+  btn.disabled = true;
+  loadExcelJS().then(function() {
+    return buildInterventionsWorkbook(v, todo).xlsx.writeBuffer();
+  }).then(function(buffer) {
+    var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var d = new Date();
+    var stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'Interventions_' + String(v.plaque || 'vehicule').replace(/[^A-Za-z0-9-]/g, '-') + '_' + stamp + '.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    showToast('Fichier Excel téléchargé ✓');
+  }).catch(function(e) {
+    showToast('Export impossible : ' + e.message);
+  }).then(function() { btn.disabled = false; });
+}
+
+function buildInterventionsWorkbook(v, todo) {
+  var RED = 'FFCC0000', GREY = 'FFF4F4F6', BORDER = 'FFBFBFBF';
+  var wb = new ExcelJS.Workbook();
+  wb.creator = 'Bonnafous — Suivi Parc';
+  var ws = wb.addWorksheet('Interventions', {
+    pageSetup: {
+      paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+      horizontalCentered: true,
+      margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.6, header: 0.3, footer: 0.3 }
+    },
+    headerFooter: { oddFooter: '&L' + (v.plaque || '') + '&CPage &P / &N&RBonnafous — Suivi Parc' }
+  });
+
+  ws.columns = [
+    { key: 'num',   width: 5 },
+    { key: 'cat',   width: 13 },
+    { key: 'ess',   width: 10 },
+    { key: 'op',    width: 18 },
+    { key: 'desc',  width: 42 },
+    { key: 'date',  width: 11 },
+    { key: 'fait',  width: 7 },
+    { key: 'temps', width: 11 },
+    { key: 'obs',   width: 34 }
+  ];
+  var lastCol = 'I';
+  var thin = { style: 'thin', color: { argb: BORDER } };
+  var allBorders = { top: thin, left: thin, bottom: thin, right: thin };
+
+  // Titre
+  ws.mergeCells('A1:' + lastCol + '1');
+  var t = ws.getCell('A1');
+  t.value = 'BONNAFOUS — FICHE D\'INTERVENTIONS À RÉALISER';
+  t.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+  t.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED } };
+  t.alignment = { vertical: 'middle', horizontal: 'center' };
+  ws.getRow(1).height = 30;
+
+  // Infos véhicule
+  var infos = [
+    ['Véhicule', [v.plaque, v.marque, v.type, v.categorie].filter(Boolean).join('  ·  ')],
+    ['Année / Motorisation', [v.annee, v.motorisation].filter(Boolean).join('  ·  ') || '—'],
+    ['N° VIN', v.vin || '—'],
+    ['Édité le', todayStr() + '   —   ' + todo.length + ' intervention(s) à réaliser']
+  ];
+  infos.forEach(function(info, idx) {
+    var r = 3 + idx;
+    ws.mergeCells('A' + r + ':C' + r);
+    ws.mergeCells('D' + r + ':' + lastCol + r);
+    var l = ws.getCell('A' + r), val = ws.getCell('D' + r);
+    l.value = info[0];
+    l.font = { bold: true, color: { argb: 'FF595959' } };
+    l.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GREY } };
+    val.value = info[1];
+    val.font = { bold: idx === 0, size: idx === 0 ? 13 : 11 };
+    [l, val].forEach(function(c) { c.border = allBorders; c.alignment = { vertical: 'middle' }; });
+    ws.getRow(r).height = 20;
+  });
+
+  // En-tête du tableau
+  var headRow = 8;
+  var heads = ['N°', 'Catégorie', 'Essieu', 'Opération', 'Description', 'Noté le', 'Fait', 'Temps passé', 'Observations mécanicien'];
+  var hr = ws.getRow(headRow);
+  heads.forEach(function(h, idx) {
+    var c = hr.getCell(idx + 1);
+    c.value = h;
+    c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED } };
+    c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    c.border = allBorders;
+  });
+  hr.height = 24;
+
+  // Lignes
+  todo.forEach(function(i, idx) {
+    var row = ws.getRow(headRow + 1 + idx);
+    row.values = [idx + 1, i.categorie || '—', i.sousCategorie || '', i.operation || '', i.text || '', i.date || '', '☐', '', ''];
+    var lines = Math.max(1, Math.ceil(String(i.text || '').length / 45));
+    row.height = Math.max(32, lines * 15 + 10);
+    row.eachCell({ includeEmpty: true }, function(c, col) {
+      if (col > heads.length) return;
+      c.border = allBorders;
+      c.alignment = { vertical: 'middle', wrapText: true, horizontal: (col === 1 || col === 6 || col === 7) ? 'center' : 'left' };
+      if (idx % 2 === 1) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GREY } };
+    });
+    row.getCell(2).font = { bold: true };
+    row.getCell(7).font = { size: 16 };
+  });
+
+  // Signature
+  var sig = headRow + todo.length + 3;
+  ws.mergeCells('A' + sig + ':E' + sig);
+  ws.mergeCells('F' + sig + ':' + lastCol + sig);
+  ws.getCell('A' + sig).value = 'Mécanicien : ______________________________';
+  ws.getCell('F' + sig).value = 'Date : ____ / ____ / ________      Signature :';
+  [ws.getCell('A' + sig), ws.getCell('F' + sig)].forEach(function(c) { c.font = { bold: true }; });
+  ws.getRow(sig).height = 28;
+
+  ws.pageSetup.printArea = 'A1:' + lastCol + sig;
+  ws.pageSetup.printTitlesRow = headRow + ':' + headRow;
+  ws.views = [{ state: 'frozen', ySplit: headRow }];
+  return wb;
 }
 
 function deleteIntervention(intervId) {
